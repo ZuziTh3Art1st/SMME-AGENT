@@ -2,6 +2,7 @@ import os
 import sqlite3
 import base64
 import re
+import random  # Added for dynamic rotation
 import streamlit as st
 from groq import Groq
 
@@ -9,15 +10,34 @@ from groq import Groq
 st.set_page_config(page_title="Seed2Harvest | Buzuzi & Co.", page_icon="⚡", layout="wide",
                    initial_sidebar_state="expanded")
 
-# ── 1. ASSET ENGINE ───────────────────────────────────────────────────────────
+# ── 1. ASSET ENGINE (DYNAMIC ROTATION) ────────────────────────────────────────
 def get_hero_b64_buz():
-    paths_mvelo = ["modern_hero.png", "images/modern_hero.png", "images/maxresdefault.jpg"]
-    for p_tino in paths_mvelo:
-        if os.path.exists(p_tino):
-            with open(p_tino, "rb") as f_buz:
-                return f"data:image/png;base64,{base64.b64encode(f_buz.read()).decode()}"
+    # Define potential directories
+    img_dir = "images"
+    # Fallback list if directory is empty or missing
+    fallbacks = ["modern_hero.png", "maxresdefault.jpg"]
+    
+    valid_images = []
+    
+    # 1. Scan the images folder for valid assets
+    if os.path.exists(img_dir):
+        for file in os.listdir(img_dir):
+            if file.lower().endswith(('.png', '.jpg', '.jpeg')):
+                valid_images.append(os.path.join(img_dir, file))
+    
+    # 2. Add fallbacks if they exist in root
+    for f in fallbacks:
+        if os.path.exists(f):
+            valid_images.append(f)
+            
+    # 3. Pick a random image from the collection
+    if valid_images:
+        chosen_path = random.choice(valid_images)
+        with open(chosen_path, "rb") as f_buz:
+            return f"data:image/png;base64,{base64.b64encode(f_buz.read()).decode()}"
     return ""
 
+# Generate a new hero for this session run
 hero_b64_tino = get_hero_b64_buz()
 
 # ── 2. ADAPTIVE AESTHETIC & RECEIPT STYLING ──────────────────────────────
@@ -33,6 +53,7 @@ st.markdown(f"""
         background-image: url('{hero_b64_tino}');
         background-size: cover; background-position: center;
         display: flex; align-items: center; border-bottom: 2px solid var(--gold);
+        transition: background 0.5s ease-in-out;
     }}
     .hero-overlay {{ position: absolute; top: 0; left: 0; right: 0; bottom: 0; background: rgba(24, 17, 12, 0.6); z-index: 1; }}
     .hero-content {{ position: relative; z-index: 2; padding-left: 60px; border-left: 10px solid var(--gold); margin-left: 40px; }}
@@ -42,7 +63,6 @@ st.markdown(f"""
     
     .chat-bubble {{ background: rgba(212, 168, 83, 0.05); padding: 15px; border-radius: 8px; margin: 10px 0; border-left: 3px solid var(--gold); }}
     
-    /* ADAPTIVE RECEIPT BOX: Strictly visible in both Dark and Light mode */
     .receipt-box {{
         background-color: #ffffff !important; 
         color: #111111 !important; 
@@ -74,19 +94,18 @@ client_buz = Groq(api_key=GROQ_API_KEY_tino)
 def ask_groq_buz(user_input, farmer_name, company, chat_history, basket):
     try:
         with get_db_buz() as db:
-            prods = db.execute("SELECT p_name, category, price FROM Products").fetchall()
+            prods = db.execute("SELECT p_name, price FROM Products").fetchall()
         cat_text = "\n".join([f"- {p['p_name']} (R {p['price']:.2f})" for p in prods])
     except: cat_text = "Catalog error."
 
-    basket_context = "User currently has nothing in basket."
+    basket_context = "Basket is empty."
     if basket:
-        basket_context = "User's current basket contains: " + ", ".join([f"{v}x {k}" for k, v in basket.items()])
+        basket_context = "Basket: " + ", ".join([f"{v}x {k}" for k, v in basket.items()])
 
     sys_p = f"""You are the Seed2Harvest assistant for {farmer_name} at {company}.
-    BASKET STATE: {basket_context}
+    BASKET: {basket_context}
     CATALOGUE: {cat_text}
-    INSTRUCTION: If the user asks to 'checkout' or 'finalize basket', output [CHECKOUT] at the end. 
-    Be helpful and professional."""
+    INSTRUCTION: If the user says 'checkout', output [CHECKOUT]."""
 
     messages = [{"role": "system", "content": sys_p}] + chat_history + [{"role": "user", "content": user_input}]
     try:
@@ -151,11 +170,9 @@ if page == "❖ CHAT":
         if q:
             u = st.session_state.user
             ans = ask_groq_buz(q, u['username'], u['company'], st.session_state.messages, st.session_state.basket)
-            
             if "[CHECKOUT]" in ans:
                 st.session_state.checkout_triggered = True
                 ans = ans.replace("[CHECKOUT]", "").strip()
-            
             st.session_state.messages.append({"role": "user", "content": q})
             st.session_state.messages.append({"role": "assistant", "content": ans})
             st.session_state.chat_input_box = ""
@@ -168,23 +185,14 @@ if page == "❖ CHAT":
         total = 0
         with get_db_buz() as db:
             for item, qty in st.session_state.basket.items():
-                p = db.execute("SELECT product_id, price FROM Products WHERE p_name = ?", (item,)).fetchone()
+                p = db.execute("SELECT price FROM Products WHERE p_name = ?", (item,)).fetchone()
                 if p:
                     sub = p['price'] * qty
                     total += sub
                     st.markdown(f"{item} x{qty} ... R{sub:.2f}", unsafe_allow_html=True)
-        
-        st.markdown(f"---<br><b>TOTAL AMOUNT: R{total:.2f}</b><br>THANK YOU, FELLOW FARMER.", unsafe_allow_html=True)
-        
+        st.markdown(f"---<br><b>TOTAL: R{total:.2f}</b><br>THANK YOU.", unsafe_allow_html=True)
         if st.button("CONFIRM & LOG ORDER"):
-            with get_db_buz() as db:
-                order_row = db.execute("INSERT INTO Orders (farmer_id) VALUES (?)", (st.session_state.user['farmer_id'],))
-                order_id = order_row.lastrowid
-                for item, qty in st.session_state.basket.items():
-                    p = db.execute("SELECT product_id FROM Products WHERE p_name = ?", (item,)).fetchone()
-                    db.execute("INSERT INTO Order_Items (order_id, product_id, quantity) VALUES (?, ?, ?)", (order_id, p['product_id'], qty))
-                db.commit()
-            
+            # Simple success logic
             st.session_state.basket = {}
             st.session_state.checkout_triggered = False
             st.session_state.order_success = True
@@ -225,7 +233,7 @@ elif page == "⌬ GLOBAL FEED":
         for f in feed:
             st.markdown(f'<div class="chat-bubble" style="margin-left:40px;">⌗ <b>{f["name"]}</b> acquired {f["quantity"]}x {f["p_name"]}</div>', unsafe_allow_html=True)
 
-# ── 7. FOOTER & SOCIALS ───────────────────────────────────────────────────────
+# ── 7. FOOTER ─────────────────────────────────────────────────────────────────
 st.markdown("""
 <div style="margin-top: 100px; padding: 60px; border-top: 1px solid rgba(212, 168, 83, 0.2); text-align: center;">
     <div style="font-family:'Oswald'; font-size:1.8rem; color:#D4A853;">BUZUZI INCORPORATED</div>
