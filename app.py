@@ -6,7 +6,7 @@ import streamlit as st
 from groq import Groq
 
 # ── ASHLEY & TEAM ELITE PAGE CONFIG ───────────────────────────────────────────
-st.set_page_config(page_title="Seed2Harvest | Buzuzi & Co.", page_icon="🌾", layout="wide",
+st.set_page_config(page_title="Seed2Harvest | Buzuzi & Co.", page_icon="⚡", layout="wide",
                    initial_sidebar_state="expanded")
 
 # ── 1. ASSET ENGINE ───────────────────────────────────────────────────────────
@@ -20,7 +20,7 @@ def get_hero_b64_buz():
 
 hero_b64_tino = get_hero_b64_buz()
 
-# ── 2. ADAPTIVE AESTHETIC & BASKET STYLING ──────────────────────────────
+# ── 2. ADAPTIVE AESTHETIC & RECEIPT STYLING ──────────────────────────────
 st.markdown(f"""
 <style>
     @import url('https://fonts.googleapis.com/css2?family=Oswald:wght@300;400;600&family=Space+Mono&display=swap');
@@ -42,13 +42,21 @@ st.markdown(f"""
     
     .chat-bubble {{ background: rgba(212, 168, 83, 0.05); padding: 15px; border-radius: 8px; margin: 10px 0; border-left: 3px solid var(--gold); }}
     
+    /* ADAPTIVE RECEIPT BOX: Strictly visible in both Dark and Light mode */
     .receipt-box {{
-        background: #fdfdfd; color: #111; padding: 30px; border: 1px solid #ddd;
-        font-family: 'Space Mono', monospace; text-transform: uppercase;
-        box-shadow: 10px 10px 0px var(--gold); margin: 20px 0;
+        background-color: #ffffff !important; 
+        color: #111111 !important; 
+        padding: 40px; 
+        border: 2px solid var(--gold);
+        font-family: 'Space Mono', monospace; 
+        text-transform: uppercase;
+        box-shadow: 15px 15px 0px rgba(212, 168, 83, 0.4); 
+        margin: 20px 40px;
     }}
+    .receipt-box b, .receipt-box p, .receipt-box span {{ color: #111111 !important; }}
 
     .buhle-quote {{ font-style: italic; color: var(--gold); font-size: 0.8rem; margin-top: 5px; }}
+    .ashley-quote {{ font-family: 'Oswald'; font-size: 1.2rem; color: var(--gold); text-align: center; margin-top: 20px; text-transform: uppercase; }}
 </style>
 """, unsafe_allow_html=True)
 
@@ -94,7 +102,7 @@ if "logged_in" not in st.session_state:
 st.markdown('<div class="hero-section"><div class="hero-overlay"></div><div class="hero-content"><h1 class="hero-title">SEED 2<br>HARVEST</h1><p style="color:var(--gold); letter-spacing:5px;">ELEVATE YOUR EVERYDAY</p></div></div>', unsafe_allow_html=True)
 
 if not st.session_state.logged_in:
-    st.markdown('<div style="padding: 60px;"><h3>CLIENT ONBOARDING</h3>', unsafe_allow_html=True)
+    st.markdown('<div style="padding: 60px;"><h3>◈ CLIENT ONBOARDING</h3>', unsafe_allow_html=True)
     f_n = st.text_input("NAME")
     f_c = st.text_input("FARM / COMPANY")
     f_l = st.text_input("LOCATION")
@@ -119,10 +127,10 @@ if not st.session_state.logged_in:
 # ── 6. MAIN INTERFACE ─────────────────────────────────────────────────────────
 with st.sidebar:
     st.markdown(f"<h3>{st.session_state.user['company'].upper()}</h3>", unsafe_allow_html=True)
-    page = st.radio("OPERATIONS", ["💬 CHAT", "🛒 CATALOGUE", "📦 GLOBAL FEED"])
+    page = st.radio("OPERATIONS", ["❖ CHAT", "▤ CATALOGUE", "⌬ GLOBAL FEED"])
     
     st.markdown("---")
-    st.markdown("### 🧺 YOUR BASKET")
+    st.markdown("### ⧉ YOUR BASKET")
     if not st.session_state.basket: st.write("Empty")
     for item, qty in st.session_state.basket.items():
         st.write(f"{qty}x {item}")
@@ -132,11 +140,11 @@ with st.sidebar:
     if st.button("TERMINATE"): st.session_state.logged_in = False; st.rerun()
 
 # ── PAGE: CHAT ──
-if page == "💬 CHAT":
-    st.markdown("<h3>CONSULTING AGENT</h3>", unsafe_allow_html=True)
+if page == "❖ CHAT":
+    st.markdown("<h3 style='margin-left:40px;'>STRATEGIC AGENT</h3>", unsafe_allow_html=True)
     for m in st.session_state.messages:
         role = "CLIENT" if m["role"] == "user" else "AGENT"
-        st.markdown(f'<div class="chat-bubble"><b>{role}:</b><br>{m["content"]}</div>', unsafe_allow_html=True)
+        st.markdown(f'<div class="chat-bubble" style="margin-left:40px;"><b>{role}:</b><br>{m["content"]}</div>', unsafe_allow_html=True)
 
     def handle_chat():
         q = st.session_state.chat_input_box
@@ -156,26 +164,41 @@ if page == "💬 CHAT":
 
     if st.session_state.get("checkout_triggered"):
         st.markdown('<div class="receipt-box">', unsafe_allow_html=True)
-        st.markdown(f"**SEED 2 HARVEST**<br>*ELEVATE YOUR EVERYDAY*<br>COMPANY: {st.session_state.user['company']}<br>---", unsafe_allow_html=True)
+        st.markdown(f"<b>SEED 2 HARVEST</b><br><i>ELEVATE YOUR EVERYDAY</i><br><br><b>COMPANY:</b> {st.session_state.user['company']}<br>---", unsafe_allow_html=True)
         total = 0
         with get_db_buz() as db:
             for item, qty in st.session_state.basket.items():
-                p = db.execute("SELECT price FROM Products WHERE p_name = ?", (item,)).fetchone()
-                sub = p['price'] * qty
-                total += sub
-                st.markdown(f"{item} x{qty} ... R{sub:.2f}", unsafe_allow_html=True)
-        st.markdown(f"---<br>**TOTAL AMOUNT: R{total:.2f}**<br>THANK YOU, FELLOW FARMER.", unsafe_allow_html=True)
+                p = db.execute("SELECT product_id, price FROM Products WHERE p_name = ?", (item,)).fetchone()
+                if p:
+                    sub = p['price'] * qty
+                    total += sub
+                    st.markdown(f"{item} x{qty} ... R{sub:.2f}", unsafe_allow_html=True)
+        
+        st.markdown(f"---<br><b>TOTAL AMOUNT: R{total:.2f}</b><br>THANK YOU, FELLOW FARMER.", unsafe_allow_html=True)
+        
         if st.button("CONFIRM & LOG ORDER"):
-            # Logic to save to DB (Orders table) goes here
+            with get_db_buz() as db:
+                order_row = db.execute("INSERT INTO Orders (farmer_id) VALUES (?)", (st.session_state.user['farmer_id'],))
+                order_id = order_row.lastrowid
+                for item, qty in st.session_state.basket.items():
+                    p = db.execute("SELECT product_id FROM Products WHERE p_name = ?", (item,)).fetchone()
+                    db.execute("INSERT INTO Order_Items (order_id, product_id, quantity) VALUES (?, ?, ?)", (order_id, p['product_id'], qty))
+                db.commit()
+            
             st.session_state.basket = {}
             st.session_state.checkout_triggered = False
-            st.success("ORDER ARCHIVED")
+            st.session_state.order_success = True
             st.rerun()
         st.markdown('</div>', unsafe_allow_html=True)
 
+    if st.session_state.get("order_success"):
+        st.success("ORDER ARCHIVED")
+        st.markdown(f'<p class="ashley-quote">"To be revolutionary you must think and walk like one" — Buzuzi, Ashley [2026]</p>', unsafe_allow_html=True)
+        if st.button("DISMISS"): st.session_state.order_success = False; st.rerun()
+
 # ── PAGE: CATALOGUE ──
-elif page == "🛒 CATALOGUE":
-    st.markdown("<h3>PRODUCT SELECTION</h3>", unsafe_allow_html=True)
+elif page == "▤ CATALOGUE":
+    st.markdown("<h3 style='margin-left:40px;'>PRODUCT INVENTORY</h3>", unsafe_allow_html=True)
     with get_db_buz() as db:
         prods = db.execute("SELECT p_name, category, price FROM Products").fetchall()
         for p in prods:
@@ -185,11 +208,11 @@ elif page == "🛒 CATALOGUE":
             with col2:
                 if st.button("ADD", key=p["p_name"]):
                     st.session_state.basket[p["p_name"]] = st.session_state.basket.get(p["p_name"], 0) + 1
-                    st.toast(f"{p['p_name']} added to basket")
+                    st.toast(f"＋ {p['p_name']} added")
 
 # ── PAGE: GLOBAL FEED ──
-elif page == "📦 GLOBAL FEED":
-    st.markdown("<h3>PREVIOUS ORDERS (COMMUNITY)</h3>", unsafe_allow_html=True)
+elif page == "⌬ GLOBAL FEED":
+    st.markdown("<h3 style='margin-left:40px;'>NETWORK ACTIVITY</h3>", unsafe_allow_html=True)
     with get_db_buz() as db:
         feed = db.execute("""
             SELECT F.name, P.p_name, OI.quantity 
@@ -200,13 +223,13 @@ elif page == "📦 GLOBAL FEED":
             ORDER BY O.order_id DESC LIMIT 10
         """).fetchall()
         for f in feed:
-            st.markdown(f'<div class="chat-bubble">🚜 <b>{f["name"]}</b> acquired {f["quantity"]}x {f["p_name"]}</div>', unsafe_allow_html=True)
+            st.markdown(f'<div class="chat-bubble" style="margin-left:40px;">⌗ <b>{f["name"]}</b> acquired {f["quantity"]}x {f["p_name"]}</div>', unsafe_allow_html=True)
 
 # ── 7. FOOTER & SOCIALS ───────────────────────────────────────────────────────
 st.markdown("""
 <div style="margin-top: 100px; padding: 60px; border-top: 1px solid rgba(212, 168, 83, 0.2); text-align: center;">
     <div style="font-family:'Oswald'; font-size:1.8rem; color:#D4A853;">BUZUZI INCORPORATED</div>
-    <p style="color:#888;">FOLLOW ON SOCIALS: @SEED2HARVEST_GLOBAL</p>
+    <p style="color:#888; font-family:'Space Mono'; letter-spacing: 1px;">⫸ FOLLOW ON SOCIALS: @SEED2HARVEST_GLOBAL</p>
     <div style="font-family:'Space Mono'; font-size:0.75rem; color:#666; letter-spacing:3px; margin-top:10px;">
         ASHLEY . BUHLE . GOMOLEMO . UTHA . MVELO
     </div>
