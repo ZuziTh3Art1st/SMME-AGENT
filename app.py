@@ -21,7 +21,6 @@ def get_hero_b64_buz():
 hero_b64_tino = get_hero_b64_buz()
 
 # ── 2. MVELO'S SIGNATURE ADAPTIVE AESTHETIC ──────────────────────────────
-# Added 'color: inherit' and specific focus colors to handle Light Mode text visibility
 st.markdown(f"""
 <style>
     @import url('https://fonts.googleapis.com/css2?family=Oswald:wght@300;400;600&family=Space+Mono&display=swap');
@@ -30,12 +29,10 @@ st.markdown(f"""
         --gold: #D4A853;
     }}
 
-    /* Global Text visibility fix for Light/Dark mode */
     .stApp {{ font-family: 'Source Sans 3', sans-serif; }}
     
     h1, h2, h3 {{ font-family: 'Oswald', sans-serif !important; text-transform: uppercase; letter-spacing: -1px; color: var(--gold) !important; }}
 
-    /* Hero Section */
     .hero-section {{
         position: relative; height: 500px; width: 100%;
         background-image: url('{hero_b64_tino}');
@@ -47,14 +44,12 @@ st.markdown(f"""
     .hero-title {{ font-size: 6rem; line-height: 0.85; letter-spacing: -4px; margin: 0; color: white !important; }}
     .hero-subtitle {{ font-family: 'Space Mono'; font-size: 0.9rem; letter-spacing: 5px; text-transform: uppercase; margin-top: 15px; color: var(--gold) !important; }}
 
-    /* Input Fix: Ensures text is visible in light mode by not forcing 'white' color if background is light */
     input[type="text"], input[type="password"], textarea {{
         background-color: rgba(212, 168, 83, 0.1) !important;
         border: 1px solid var(--gold) !important;
         border-radius: 4px !important;
     }}
 
-    /* Button Styling */
     .stButton > button {{
         background-color: transparent !important; color: var(--gold) !important;
         border: 2px solid var(--gold) !important; border-radius: 4px !important;
@@ -74,6 +69,15 @@ st.markdown(f"""
         border: 1px solid rgba(212, 168, 83, 0.2); 
         padding: 20px; border-radius: 6px; margin: 10px 40px; 
         display: flex; justify-content: space-between; 
+    }}
+
+    .brief-box {{
+        margin: 10px 40px 30px 40px;
+        padding: 20px;
+        border: 1px dashed var(--gold);
+        font-family: 'Space Mono';
+        font-size: 0.85rem;
+        opacity: 0.8;
     }}
 </style>
 """, unsafe_allow_html=True)
@@ -152,6 +156,17 @@ with st.sidebar:
 
 if page == "💬 CHAT":
     st.markdown("<h3 style='margin-left:40px;'>CONSULTING AGENT</h3>", unsafe_allow_html=True)
+    
+    # ── THE CHAT EXPLANATION (STRATEGIC BRIEF) ──
+    st.markdown("""
+    <div class="brief-box">
+        <b>MISSION:</b> Optimize farm operations through real-time intelligence.<br>
+        <b>CAPABILITIES:</b> Instant pricing inquiries, inventory consultation, and automated procurement.<br>
+        <b>PROTOCOL:</b> Discuss your needs with the agent. When you are ready to purchase, 
+        confirm the request to log an official order directly into the legacy system.
+    </div>
+    """, unsafe_allow_html=True)
+
     for m in st.session_state.messages:
         role_label = "CLIENT" if m["role"] == "user" else "AGENT"
         st.markdown(f'<div class="chat-bubble"><b>{role_label}:</b><br>{m["content"]}</div>', unsafe_allow_html=True)
