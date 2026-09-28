@@ -78,10 +78,8 @@ def get_db_buz():
     conn.row_factory = sqlite3.Row
     return conn
 
-client_buz = OpenAI(
-    base_url="http://localhost:11434/v1", 
-    api_key="not-needed-for-local"
-)
+OPENAI_API_KEY_tino = st.secrets.get("OPENAI_API_KEY", "")
+client_buz = OpenAI(api_key=OPENAI_API_KEY_tino)
 
 def ask_groq_buz(user_input, farmer_name, company, chat_history, basket):
     try:
@@ -102,7 +100,7 @@ def ask_groq_buz(user_input, farmer_name, company, chat_history, basket):
     messages = [{"role": "system", "content": sys_p}] + chat_history + [{"role": "user", "content": user_input}]
     try:
         res = client_buz.chat.completions.create(
-            model="gpt-oss-20b", 
+            model="o4-mini", 
             messages=messages, 
             temperature=0.3
         )
