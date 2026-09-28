@@ -2,45 +2,36 @@ import os
 import sqlite3
 import base64
 import re
-import random  # Added for dynamic rotation
+import random
 import streamlit as st
-from groq import Groq
+from openai import OpenAI
 
-# ── ASHLEY & TEAM ELITE PAGE CONFIG ───────────────────────────────────────────
 st.set_page_config(page_title="Seed2Harvest | Buzuzi & Co.", page_icon="⚡", layout="wide",
                    initial_sidebar_state="expanded")
 
-# ── 1. ASSET ENGINE (DYNAMIC ROTATION) ────────────────────────────────────────
 def get_hero_b64_buz():
-    # Define potential directories
     img_dir = "images"
-    # Fallback list if directory is empty or missing
     fallbacks = ["modern_hero.png", "maxresdefault.jpg"]
     
     valid_images = []
     
-    # 1. Scan the images folder for valid assets
     if os.path.exists(img_dir):
         for file in os.listdir(img_dir):
             if file.lower().endswith(('.png', '.jpg', '.jpeg')):
                 valid_images.append(os.path.join(img_dir, file))
     
-    # 2. Add fallbacks if they exist in root
     for f in fallbacks:
         if os.path.exists(f):
             valid_images.append(f)
             
-    # 3. Pick a random image from the collection
     if valid_images:
         chosen_path = random.choice(valid_images)
         with open(chosen_path, "rb") as f_buz:
             return f"data:image/png;base64,{base64.b64encode(f_buz.read()).decode()}"
     return ""
 
-# Generate a new hero for this session run
 hero_b64_tino = get_hero_b64_buz()
 
-# ── 2. ADAPTIVE AESTHETIC & RECEIPT STYLING ──────────────────────────────
 st.markdown(f"""
 <style>
     @import url('https://fonts.googleapis.com/css2?family=Oswald:wght@300;400;600&family=Space+Mono&display=swap');
@@ -80,7 +71,6 @@ st.markdown(f"""
 </style>
 """, unsafe_allow_html=True)
 
-# ── 3. DATA ENGINE ─────────────────────────────────────────────────────────────
 DB_PATH_buz = "the_farm_agent.db"
 
 def get_db_buz():
@@ -88,8 +78,10 @@ def get_db_buz():
     conn.row_factory = sqlite3.Row
     return conn
 
-GROQ_API_KEY_tino = st.secrets.get("GROQ_API_KEY", "")
-client_buz = Groq(api_key=GROQ_API_KEY_tino)
+client_buz = OpenAI(
+    base_url="http://localhost:11434/v1", 
+    api_key="not-needed-for-local"
+)
 
 def ask_groq_buz(user_input, farmer_name, company, chat_history, basket):
     try:
@@ -109,15 +101,17 @@ def ask_groq_buz(user_input, farmer_name, company, chat_history, basket):
 
     messages = [{"role": "system", "content": sys_p}] + chat_history + [{"role": "user", "content": user_input}]
     try:
-        res = client_buz.chat.completions.create(model="llama-3.3-70b-versatile", messages=messages, temperature=0.3)
+        res = client_buz.chat.completions.create(
+            model="gpt-oss-20b", 
+            messages=messages, 
+            temperature=0.3
+        )
         return res.choices[0].message.content
     except Exception as e: return f"Error: {str(e)}"
 
-# ── 4. STATE MANAGEMENT ───────────────────────────────────────────────────────
 if "logged_in" not in st.session_state:
     st.session_state.update({"logged_in": False, "user": None, "messages": [], "basket": {}, "chat_input_box": ""})
 
-# ── 5. AUTH & COMPLIANCE ──────────────────────────────────────────────────────
 st.markdown('<div class="hero-section"><div class="hero-overlay"></div><div class="hero-content"><h1 class="hero-title">SEED 2<br>HARVEST</h1><p style="color:var(--gold); letter-spacing:5px;">ELEVATE YOUR EVERYDAY</p></div></div>', unsafe_allow_html=True)
 
 if not st.session_state.logged_in:
@@ -143,7 +137,6 @@ if not st.session_state.logged_in:
             st.error("Access Denied: Compliance consent required.")
     st.stop()
 
-# ── 6. MAIN INTERFACE ─────────────────────────────────────────────────────────
 with st.sidebar:
     st.markdown(f"<h3>{st.session_state.user['company'].upper()}</h3>", unsafe_allow_html=True)
     page = st.radio("OPERATIONS", ["❖ CHAT", "▤ CATALOGUE", "⌬ GLOBAL FEED"])
@@ -158,7 +151,6 @@ with st.sidebar:
     st.markdown("---")
     if st.button("TERMINATE"): st.session_state.logged_in = False; st.rerun()
 
-# ── PAGE: CHAT ──
 if page == "❖ CHAT":
     st.markdown("<h3 style='margin-left:40px;'>STRATEGIC AGENT</h3>", unsafe_allow_html=True)
     for m in st.session_state.messages:
@@ -192,7 +184,6 @@ if page == "❖ CHAT":
                     st.markdown(f"{item} x{qty} ... R{sub:.2f}", unsafe_allow_html=True)
         st.markdown(f"---<br><b>TOTAL: R{total:.2f}</b><br>THANK YOU.", unsafe_allow_html=True)
         if st.button("CONFIRM & LOG ORDER"):
-            # Simple success logic
             st.session_state.basket = {}
             st.session_state.checkout_triggered = False
             st.session_state.order_success = True
@@ -204,7 +195,6 @@ if page == "❖ CHAT":
         st.markdown(f'<p class="ashley-quote">"To be revolutionary you must think and walk like one" — Buzuzi, Ashley [2026]</p>', unsafe_allow_html=True)
         if st.button("DISMISS"): st.session_state.order_success = False; st.rerun()
 
-# ── PAGE: CATALOGUE ──
 elif page == "▤ CATALOGUE":
     st.markdown("<h3 style='margin-left:40px;'>PRODUCT INVENTORY</h3>", unsafe_allow_html=True)
     with get_db_buz() as db:
@@ -218,7 +208,6 @@ elif page == "▤ CATALOGUE":
                     st.session_state.basket[p["p_name"]] = st.session_state.basket.get(p["p_name"], 0) + 1
                     st.toast(f"＋ {p['p_name']} added")
 
-# ── PAGE: GLOBAL FEED ──
 elif page == "⌬ GLOBAL FEED":
     st.markdown("<h3 style='margin-left:40px;'>NETWORK ACTIVITY</h3>", unsafe_allow_html=True)
     with get_db_buz() as db:
@@ -233,7 +222,6 @@ elif page == "⌬ GLOBAL FEED":
         for f in feed:
             st.markdown(f'<div class="chat-bubble" style="margin-left:40px;">⌗ <b>{f["name"]}</b> acquired {f["quantity"]}x {f["p_name"]}</div>', unsafe_allow_html=True)
 
-# ── 7. FOOTER ─────────────────────────────────────────────────────────────────
 st.markdown("""
 <div style="margin-top: 100px; padding: 60px; border-top: 1px solid rgba(212, 168, 83, 0.2); text-align: center;">
     <div style="font-family:'Oswald'; font-size:1.8rem; color:#D4A853;">BUZUZI INCORPORATED</div>
