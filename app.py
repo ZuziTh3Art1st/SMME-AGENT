@@ -101,7 +101,7 @@ def ask_groq_buz(user_input, farmer_name, company, chat_history, basket):
     messages = [{"role": "system", "content": sys_p}] + chat_history + [{"role": "user", "content": user_input}]
     try:
         res = client_buz.chat.completions.create(
-            model="llama-3.3-70b-versatile", 
+            model="llama3-70b-8192", 
             messages=messages, 
             temperature=0.3
         )
