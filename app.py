@@ -4,7 +4,7 @@ import base64
 import re
 import random
 import streamlit as st
-from openai import OpenAI
+from groq import Groq
 
 st.set_page_config(page_title="Seed2Harvest | Buzuzi & Co.", page_icon="⚡", layout="wide",
                    initial_sidebar_state="expanded")
@@ -78,8 +78,8 @@ def get_db_buz():
     conn.row_factory = sqlite3.Row
     return conn
 
-OPENAI_API_KEY_tino = st.secrets.get("OPENAI_API_KEY", "")
-client_buz = OpenAI(api_key=OPENAI_API_KEY_tino)
+GROQ_API_KEY_tino = st.secrets.get("GROQ_API_KEY", "")
+client_buz = Groq(api_key=GROQ_API_KEY_tino)
 
 def ask_groq_buz(user_input, farmer_name, company, chat_history, basket):
     try:
@@ -95,12 +95,13 @@ def ask_groq_buz(user_input, farmer_name, company, chat_history, basket):
     sys_p = f"""You are the Seed2Harvest assistant for {farmer_name} at {company}.
     BASKET: {basket_context}
     CATALOGUE: {cat_text}
-    INSTRUCTION: If the user says 'checkout', output [CHECKOUT]."""
+    INSTRUCTION: If the user says 'checkout', output [CHECKOUT].
+    You can understand farmer slang and misspellings but must reply in standard language."""
 
     messages = [{"role": "system", "content": sys_p}] + chat_history + [{"role": "user", "content": user_input}]
     try:
         res = client_buz.chat.completions.create(
-            model="o4-mini", 
+            model="llama-3.3-70b-versatile", 
             messages=messages, 
             temperature=0.3
         )
